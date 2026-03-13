@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>İcra Takip Sistemi</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: #f1f5f9; min-height: 100vh; }
+    input, textarea, select, button { font-family: 'DM Sans', sans-serif; }
+    textarea { resize: vertical; }
+
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      padding: 24px 32px; color: #fff;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    }
+    .header-inner { max-width: 1100px; margin: 0 auto; }
+    .header-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+    .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+    .header p { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+    .btn-yeni {
+      background: #e85d4a; color: #fff; border: none;
+      padding: 10px 20px; border-radius: 10px; font-weight: 700;
+      font-size: 14px; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(232,93,74,0.4);
+    }
+    .status-pills { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+    .status-pill {
+      padding: 6px 14px; border-radius: 20px; font-size: 13px;
+      font-weight: 600; cursor: pointer; transition: all 0.15s;
+      border: 1.5px solid transparent; color: #cbd5e1;
+      background: rgba(255,255,255,0.08);
+    }
+
+    .main { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+    .hatirlatma-box {
+      background: #fffbeb; border: 1.5px solid #fcd34d;
+      border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;
+    }
+    .hatirlatma-box strong { color: #92400e; font-size: 13px; }
+    .hatirlatma-items { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .hatirlatma-item {
+      background: #fef3c7; color: #78350f; padding: 4px 12px;
+      border-radius: 8px; font-size: 13px; cursor: pointer; font-weight: 500;
+    }
+
+    .search-input {
+      width: 100%; padding: 12px 18px; border-radius: 12px;
+      border: 1.5px solid #e2e8f0; font-size: 14px;
+      background: #fff; outline: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+    }
+
+    .yukleniyor {
+      text-align: center; padding: 60px; color: #94a3b8; font-size: 15px;
+    }
+
+    .empty-state {
+      text-align: center; padding: 80px 20px; color: #94a3b8;
+      background: #fff; border-radius: 16px; border: 1.5px dashed #e2e8f0;
+    }
+    .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state strong { color: #64748b; display: block; }
+    .empty-state span { font-size: 13px; }
+
+    .dosya-list { display: grid; gap: 12px; }
+    .dosya-card {
+      background: #fff; border-radius: 14px; padding: 18px 22px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer;
+      border: 1.5px solid #f1f5f9; transition: box-shadow 0.15s;
+      display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 12px;
+    }
+    .dosya-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+    .dosya-title { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+    .dosya-title span { font-weight: 700; font-size: 16px; color: #1e293b; }
+    .dosya-meta { display: flex; gap: 20px; flex-wrap: wrap; font-size: 13px; color: #64748b; }
+    .dosya-meta .miktar { color: #e85d4a; font-weight: 700; }
+    .dosya-meta .dosyano { font-family: 'DM Mono', monospace; }
+    .haciz-tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .haciz-tag { font-size: 11px; color: #6366f1; font-weight: 600; background: #f0f0fd; padding: 3px 8px; border-radius: 6px; }
+    .card-actions { display: flex; gap: 8px; }
+    .btn-edit { background: #f1f5f9; border: none; border-radius: 8px; padding: 7px 12px; cursor: pointer; font-size: 13px; }
+    .btn-del { background: #fdf1f0; color: #e85d4a; border: none; border-radius: 8px; padding: 7px 12px; cursor: pointer; font-size: 13px; }
+    .badge { padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+
+    .overlay {
+      position: fixed; inset: 0; background: rgba(10,10,20,0.55);
+      backdrop-filter: blur(3px); display: flex; align-items: center;
+      justify-content: center; z-index: 100; padding: 1rem;
+    }
+    .modal {
+      background: #fff; border-radius: 16px; width: 100%; max-width: 640px;
+      max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.2);
+    }
+    .modal-body { padding: 28px; }
+    .modal-body h2 { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 24px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .col-span-2 { grid-column: 1 / -1; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field > label { font-size: 12px; font-weight: 600; color: #64748b; letter-spacing: 0.05em; }
+    .field input, .field textarea, .field select {
+      border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 12px;
+      font-size: 14px; outline: none; background: #fafafa;
+    }
+    .modal-actions { display: flex; gap: 10px; margin-top: 24px; justify-content: flex-end; }
+    .btn-cancel { background: #f1f5f9; border: none; border-radius: 10px; padding: 11px 20px; cursor: pointer; font-weight: 600; }
+    .btn-save { background: #1e293b; color: #fff; border: none; border-radius: 10px; padding: 11px 24px; cursor: pointer; font-weight: 700; }
+
+    .haciz-accordion { border: 1.5px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fafafa; }
+    .haciz-accordion-btn {
+      width: 100%; background: #fafafa; border: none; padding: 10px 14px;
+      display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer; font-size: 14px; color: #475569; font-weight: 500; text-align: left;
+    }
+    .haciz-accordion-btn:hover { background: #f1f5f9; }
+    .haciz-arrow { transition: transform 0.2s; display: inline-block; }
+    .haciz-panel { padding: 10px 14px 14px; border-top: 1.5px solid #e2e8f0; background: #fff; display: flex; flex-direction: column; gap: 4px; }
+    .haciz-check { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #1e293b; cursor: pointer; padding: 8px 10px; border-radius: 8px; transition: background 0.1s; user-select: none; }
+    .haciz-check:hover { background: #f0f0fd; }
+    .haciz-check input[type=checkbox] { width: 17px; height: 17px; accent-color: #6366f1; cursor: pointer; flex-shrink: 0; }
+    .haciz-diger-label { font-size: 12px; color: #64748b; font-weight: 600; margin: 8px 0 4px 2px; }
+
+    .detay-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+    .detay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .detay-field .lbl { font-size: 11px; font-weight: 700; color: #94a3b8; letter-spacing: 0.08em; margin-bottom: 3px; }
+    .detay-field .val { font-size: 15px; font-weight: 600; color: #1e293b; }
+    .detay-haciz { margin-top: 16px; background: #f0f0fd; border-radius: 10px; padding: 14px; }
+    .detay-haciz .lbl { font-size: 11px; font-weight: 700; color: #6366f1; margin-bottom: 8px; }
+    .detay-haciz-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .detay-haciz-tag { background: #e0e0fc; color: #4338ca; padding: 4px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+    .detay-haciz-diger { font-size: 13px; color: #4338ca; margin-top: 8px; }
+    .detay-not { margin-top: 12px; background: #f8fafc; border-radius: 10px; padding: 14px; }
+    .detay-not .lbl { font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 6px; }
+    .detay-not .val { font-size: 14px; color: #475569; }
+    .detay-actions { display: flex; gap: 10px; margin-top: 24px; }
+    .btn-duzenle { flex: 1; background: #1e293b; color: #fff; border: none; border-radius: 10px; padding: 12px; cursor: pointer; font-weight: 700; }
+    .btn-sil2 { background: #fdf1f0; color: #e85d4a; border: none; border-radius: 10px; padding: 12px 20px; cursor: pointer; font-weight: 700; }
+    .btn-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8; }
+
+    .onay-body { padding: 32px; text-align: center; }
+    .onay-body .icon { font-size: 40px; margin-bottom: 12px; }
+    .onay-body h3 { color: #1e293b; margin-bottom: 8px; }
+    .onay-body p { color: #64748b; font-size: 14px; margin-bottom: 24px; }
+    .onay-actions { display: flex; gap: 12px; justify-content: center; }
+    .btn-iptal { background: #f1f5f9; border: none; border-radius: 10px; padding: 11px 24px; cursor: pointer; font-weight: 600; }
+    .btn-sil-onay { background: #e85d4a; color: #fff; border: none; border-radius: 10px; padding: 11px 24px; cursor: pointer; font-weight: 700; }
+
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: #fff;
+      padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2); z-index: 999;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .col-span-2 { grid-column: 1; }
+      .detay-grid { grid-template-columns: 1fr; }
+      .header { padding: 18px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-top">
+      <div>
+        <h1>⚖️ İcra Takip Sistemi</h1>
+        <p id="header-stats">Yükleniyor...</p>
+      </div>
+      <button class="btn-yeni" onclick="openYeni()">+ Yeni Dosya</button>
+    </div>
+    <div class="status-pills" id="status-pills"></div>
+  </div>
+</div>
+
+<div class="main">
+  <div id="hatirlatmalar"></div>
+  <input class="search-input" id="arama" placeholder="🔍  Borçlu adı, dosya no veya haciz türü ara..." oninput="render()" />
+  <div id="liste"><div class="yukleniyor">⏳ Veriler yükleniyor...</div></div>
+</div>
+
+<!-- Form Modal -->
+<div class="overlay" id="form-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-body">
+      <h2 id="form-title">Yeni İcra Dosyası</h2>
+      <div class="form-grid">
+        <div class="field col-span-2">
+          <label>BORÇLU ADI *</label>
+          <input id="f-borclu" placeholder="Ad Soyad" />
+        </div>
+        <div class="field">
+          <label>TELEFON</label>
+          <input id="f-telefon" placeholder="05xx xxx xx xx" />
+        </div>
+        <div class="field">
+          <label>DOSYA / ESAS NO</label>
+          <input id="f-dosyaNo" placeholder="2024/1234" />
+        </div>
+        <div class="field">
+          <label>BORÇ MİKTARI (TL)</label>
+          <input id="f-borcMiktar" type="number" placeholder="0.00" />
+        </div>
+        <div class="field">
+          <label>TAKİP TARİHİ</label>
+          <input id="f-takipTarihi" type="date" />
+        </div>
+        <div class="field">
+          <label>DURUM</label>
+          <select id="f-durum">
+            <option value="acik">Açık</option>
+            <option value="islemde">İşlemde</option>
+            <option value="hacizli">Hacizli</option>
+            <option value="tahsil">Tahsil Edildi</option>
+            <option value="kapandi">Kapandı</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>HATIRLATMA TARİHİ</label>
+          <input id="f-hatirlatma" type="date" />
+        </div>
+        <div class="field col-span-2">
+          <label>UYGULANAN HACİZLER</label>
+          <div class="haciz-accordion">
+            <button type="button" class="haciz-accordion-btn" onclick="toggleHacizPanel()">
+              <span id="haciz-btn-label" style="color:#94a3b8">Haciz türlerini seçmek için tıkla...</span>
+              <span id="haciz-arrow" class="haciz-arrow">▼</span>
+            </button>
+            <div class="haciz-panel" id="haciz-panel" style="display:none">
+              <label class="haciz-check"><input type="checkbox" id="h-maas" onchange="updateHacizLabel()" /> Maaş Haczi</label>
+              <label class="haciz-check"><input type="checkbox" id="h-banka" onchange="updateHacizLabel()" /> Banka Haczi</label>
+              <label class="haciz-check"><input type="checkbox" id="h-arac" onchange="updateHacizLabel()" /> Araç Haczi</label>
+              <label class="haciz-check"><input type="checkbox" id="h-tapu" onchange="updateHacizLabel()" /> Tapu / Gayrimenkul Haczi</label>
+              <div class="haciz-diger-label">DİĞER / NOTLAR</div>
+              <textarea id="f-hacizler" rows="2" placeholder="Diğer haciz türleri veya ek notlar..." style="border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;background:#fafafa;outline:none;"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="field col-span-2">
+          <label>NOTLAR</label>
+          <textarea id="f-notlar" rows="3" placeholder="Serbest not..."></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="document.getElementById('form-modal').style.display='none'">İptal</button>
+        <button class="btn-save" id="btn-kaydet" onclick="kaydet()">Kaydet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Detay Modal -->
+<div class="overlay" id="detay-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-body" id="detay-icerik"></div>
+  </div>
+</div>
+
+<!-- Silme Onayı -->
+<div class="overlay" id="sil-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="onay-body">
+      <div class="icon">⚠️</div>
+      <h3>Bu dosyayı silmek istediğine emin misin?</h3>
+      <p>Bu işlem geri alınamaz.</p>
+      <div class="onay-actions">
+        <button class="btn-iptal" onclick="document.getElementById('sil-modal').style.display='none'">İptal</button>
+        <button class="btn-sil-onay" onclick="silOnayla()">Evet, Sil</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Supabase bağlantısı
+const SUPABASE_URL = "https://xfwzoybfkcpvhcajtxcb.supabase.co";
+const SUPABASE_KEY = "sb_publishable_k_dxQeABIJGL19Uwli4s4w_2RoNBlzY";
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const STATUS = {
+  acik:    { label: "Açık",          color: "#e85d4a", bg: "#fdf1f0" },
+  islemde: { label: "İşlemde",       color: "#d4a017", bg: "#fdf8e6" },
+  hacizli: { label: "Hacizli",       color: "#6366f1", bg: "#f0f0fd" },
+  tahsil:  { label: "Tahsil Edildi", color: "#22c55e", bg: "#f0fdf4" },
+  kapandi: { label: "Kapandı",       color: "#94a3b8", bg: "#f8fafc" },
+};
+
+const HACIZ_TIPLERI = [
+  { id: "h-maas",  label: "Maaş Haczi" },
+  { id: "h-banka", label: "Banka Haczi" },
+  { id: "h-arac",  label: "Araç Haczi" },
+  { id: "h-tapu",  label: "Tapu / Gayrimenkul Haczi" },
+];
+
+let dosyalar = [];
+let durumFiltre = "hepsi";
+let editId = null;
+let silId = null;
+let panelAcik = false;
+
+function toast(msg) {
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function formatCurrency(v) {
+  const n = parseFloat(v);
+  if (isNaN(n)) return "-";
+  return n.toLocaleString("tr-TR", { style: "currency", currency: "TRY" });
+}
+function formatDate(d) {
+  if (!d) return "-";
+  const [y, m, day] = d.split("-");
+  return `${day}.${m}.${y}`;
+}
+function badge(status) {
+  const s = STATUS[status] || STATUS.acik;
+  return `<span class="badge" style="background:${s.bg};color:${s.color};border:1.5px solid ${s.color}33">${s.label}</span>`;
+}
+function bugun() { return new Date().toISOString().split("T")[0]; }
+
+// Veritabanından yükle
+async function yukle() {
+  const { data, error } = await db.from("dosyalar").select("*").order("olusturma_tarihi", { ascending: false });
+  if (error) { console.error(error); toast("❌ Veriler yüklenemedi!"); return; }
+  dosyalar = (data || []).map(d => ({
+    id: d.id,
+    borclu: d.borclu,
+    telefon: d.telefon,
+    dosyaNo: d.dosya_no,
+    borcMiktar: d.borc_miktar,
+    takipTarihi: d.takip_tarihi,
+    durum: d.durum,
+    hatirlatmaTarihi: d.hatirlatma_tarihi,
+    hacizSecili: d.haciz_secili ? JSON.parse(d.haciz_secili) : [],
+    hacizler: d.hacizler,
+    notlar: d.notlar,
+  }));
+  render();
+}
+
+function toggleHacizPanel() {
+  panelAcik = !panelAcik;
+  document.getElementById("haciz-panel").style.display = panelAcik ? "flex" : "none";
+  document.getElementById("haciz-arrow").style.transform = panelAcik ? "rotate(180deg)" : "rotate(0deg)";
+}
+
+function updateHacizLabel() {
+  const secili = HACIZ_TIPLERI.filter(h => document.getElementById(h.id)?.checked).map(h => h.label);
+  const lbl = document.getElementById("haciz-btn-label");
+  if (secili.length === 0) {
+    lbl.textContent = "Haciz türlerini seçmek için tıkla...";
+    lbl.style.color = "#94a3b8"; lbl.style.fontWeight = "";
+  } else {
+    lbl.textContent = "✓ " + secili.join(", ");
+    lbl.style.color = "#6366f1"; lbl.style.fontWeight = "600";
+  }
+}
+
+function getSeciliHacizler() {
+  return HACIZ_TIPLERI.filter(h => document.getElementById(h.id)?.checked).map(h => h.label);
+}
+
+function setSeciliHacizler(liste) {
+  HACIZ_TIPLERI.forEach(h => {
+    const el = document.getElementById(h.id);
+    if (el) el.checked = (liste || []).includes(h.label);
+  });
+  updateHacizLabel();
+}
+
+function render() {
+  const metin = document.getElementById("arama").value.toLowerCase();
+  const aktif = dosyalar.filter(d => d.durum !== "kapandi" && d.durum !== "tahsil");
+  const toplam = aktif.reduce((s, d) => s + (parseFloat(d.borcMiktar) || 0), 0);
+  document.getElementById("header-stats").textContent =
+    `${dosyalar.length} dosya · Aktif alacak: ${formatCurrency(toplam)}`;
+
+  document.getElementById("status-pills").innerHTML = Object.entries(STATUS).map(([k, v]) => {
+    const count = dosyalar.filter(d => d.durum === k).length;
+    const active = durumFiltre === k;
+    return `<div class="status-pill" style="${active ? `background:${v.color};color:#fff;border-color:${v.color}` : ''}" onclick="toggleFiltre('${k}')">${v.label} (${count})</div>`;
+  }).join("");
+
+  const hat = dosyalar.filter(d => d.hatirlatmaTarihi && d.hatirlatmaTarihi <= bugun() && d.durum !== "kapandi" && d.durum !== "tahsil");
+  document.getElementById("hatirlatmalar").innerHTML = hat.length > 0 ? `<div class="hatirlatma-box">
+    <strong>🔔 Bugün veya geçmiş hatırlatmalar:</strong>
+    <div class="hatirlatma-items">${hat.map(d => `<span class="hatirlatma-item" onclick="openDetay('${d.id}')">${d.borclu} — ${formatDate(d.hatirlatmaTarihi)}</span>`).join("")}</div>
+  </div>` : "";
+
+  const filtered = dosyalar.filter(d => {
+    const tumHaciz = [...(d.hacizSecili || []), d.hacizler || ""].join(" ").toLowerCase();
+    const eslesme = !metin || d.borclu?.toLowerCase().includes(metin) || d.dosyaNo?.toLowerCase().includes(metin) || tumHaciz.includes(metin);
+    return eslesme && (durumFiltre === "hepsi" || d.durum === durumFiltre);
+  });
+
+  const listeEl = document.getElementById("liste");
+  if (filtered.length === 0) {
+    listeEl.innerHTML = `<div class="empty-state"><div class="icon">📂</div><strong>Dosya bulunamadı</strong><span>Yeni dosya eklemek için sağ üstteki butonu kullan</span></div>`;
+    return;
+  }
+
+  listeEl.innerHTML = `<div class="dosya-list">${filtered.map(d => {
+    const tags = (d.hacizSecili || []).map(h => `<span class="haciz-tag">🔒 ${h}</span>`).join("");
+    return `<div class="dosya-card" onclick="openDetay('${d.id}')">
+      <div>
+        <div class="dosya-title"><span>${d.borclu}</span>${badge(d.durum)}
+          ${d.hatirlatmaTarihi && d.hatirlatmaTarihi <= bugun() && d.durum !== "kapandi" && d.durum !== "tahsil" ? '<span style="color:#d4a017">🔔</span>' : ""}
+        </div>
+        <div class="dosya-meta">
+          ${d.dosyaNo ? `<span class="dosyano">📁 ${d.dosyaNo}</span>` : ""}
+          ${d.borcMiktar ? `<span class="miktar">${formatCurrency(d.borcMiktar)}</span>` : ""}
+          ${d.takipTarihi ? `<span>📅 ${formatDate(d.takipTarihi)}</span>` : ""}
+          ${d.telefon ? `<span>📞 ${d.telefon}</span>` : ""}
+        </div>
+        ${tags ? `<div class="haciz-tags">${tags}</div>` : ""}
+        ${d.hacizler ? `<div style="margin-top:6px;font-size:12px;color:#64748b">📝 ${d.hacizler}</div>` : ""}
+      </div>
+      <div class="card-actions">
+        <button class="btn-edit" onclick="event.stopPropagation();openDuzenle('${d.id}')">✏️</button>
+        <button class="btn-del" onclick="event.stopPropagation();openSil('${d.id}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function toggleFiltre(k) { durumFiltre = durumFiltre === k ? "hepsi" : k; render(); }
+
+function resetForm() {
+  ["borclu","telefon","dosyaNo","borcMiktar","takipTarihi","hatirlatma","notlar"].forEach(id => {
+    const el = document.getElementById("f-" + id); if (el) el.value = "";
+  });
+  document.getElementById("f-hacizler").value = "";
+  document.getElementById("f-durum").value = "acik";
+  setSeciliHacizler([]);
+  panelAcik = false;
+  document.getElementById("haciz-panel").style.display = "none";
+  document.getElementById("haciz-arrow").style.transform = "rotate(0deg)";
+}
+
+function openYeni() {
+  editId = null;
+  document.getElementById("form-title").textContent = "Yeni İcra Dosyası";
+  resetForm();
+  document.getElementById("form-modal").style.display = "flex";
+}
+
+function openDuzenle(id) {
+  const d = dosyalar.find(x => x.id === id); if (!d) return;
+  editId = id;
+  document.getElementById("form-title").textContent = "Dosyayı Düzenle";
+  document.getElementById("f-borclu").value = d.borclu || "";
+  document.getElementById("f-telefon").value = d.telefon || "";
+  document.getElementById("f-dosyaNo").value = d.dosyaNo || "";
+  document.getElementById("f-borcMiktar").value = d.borcMiktar || "";
+  document.getElementById("f-takipTarihi").value = d.takipTarihi || "";
+  document.getElementById("f-durum").value = d.durum || "acik";
+  document.getElementById("f-hatirlatma").value = d.hatirlatmaTarihi || "";
+  document.getElementById("f-hacizler").value = d.hacizler || "";
+  document.getElementById("f-notlar").value = d.notlar || "";
+  setSeciliHacizler(d.hacizSecili || []);
+  const varHaciz = (d.hacizSecili || []).length > 0;
+  panelAcik = varHaciz;
+  document.getElementById("haciz-panel").style.display = varHaciz ? "flex" : "none";
+  document.getElementById("haciz-arrow").style.transform = varHaciz ? "rotate(180deg)" : "rotate(0deg)";
+  document.getElementById("form-modal").style.display = "flex";
+  document.getElementById("detay-modal").style.display = "none";
+}
+
+async function kaydet() {
+  const borclu = document.getElementById("f-borclu").value.trim();
+  if (!borclu) { alert("Borçlu adı zorunludur."); return; }
+  const btn = document.getElementById("btn-kaydet");
+  btn.textContent = "Kaydediliyor..."; btn.disabled = true;
+
+  const kayit = {
+    borclu,
+    telefon: document.getElementById("f-telefon").value || null,
+    dosya_no: document.getElementById("f-dosyaNo").value || null,
+    borc_miktar: document.getElementById("f-borcMiktar").value || null,
+    takip_tarihi: document.getElementById("f-takipTarihi").value || null,
+    durum: document.getElementById("f-durum").value,
+    hatirlatma_tarihi: document.getElementById("f-hatirlatma").value || null,
+    haciz_secili: JSON.stringify(getSeciliHacizler()),
+    hacizler: document.getElementById("f-hacizler").value || null,
+    notlar: document.getElementById("f-notlar").value || null,
+  };
+
+  let error;
+  if (editId) {
+    ({ error } = await db.from("dosyalar").update(kayit).eq("id", editId));
+  } else {
+    kayit.id = Date.now().toString();
+    ({ error } = await db.from("dosyalar").insert(kayit));
+  }
+
+  btn.textContent = "Kaydet"; btn.disabled = false;
+  if (error) { console.error(error); toast("❌ Kaydedilemedi: " + error.message); return; }
+  toast(editId ? "✅ Dosya güncellendi!" : "✅ Dosya eklendi!");
+  document.getElementById("form-modal").style.display = "none";
+  await yukle();
+}
+
+function openDetay(id) {
+  const d = dosyalar.find(x => x.id === id); if (!d) return;
+  const fields = [
+    ["Telefon", d.telefon], ["Dosya No", d.dosyaNo],
+    ["Borç Miktarı", d.borcMiktar ? formatCurrency(d.borcMiktar) : null],
+    ["Takip Tarihi", formatDate(d.takipTarihi)],
+    ["Hatırlatma", formatDate(d.hatirlatmaTarihi)],
+  ].filter(([, v]) => v && v !== "-");
+
+  const hs = d.hacizSecili || [];
+  const hacizHtml = (hs.length > 0 || d.hacizler) ? `
+    <div class="detay-haciz">
+      <div class="lbl">🔒 UYGULANAN HACİZLER</div>
+      ${hs.length > 0 ? `<div class="detay-haciz-tags">${hs.map(h => `<span class="detay-haciz-tag">${h}</span>`).join("")}</div>` : ""}
+      ${d.hacizler ? `<div class="detay-haciz-diger">${d.hacizler}</div>` : ""}
+    </div>` : "";
+
+  document.getElementById("detay-icerik").innerHTML = `
+    <div class="detay-header">
+      <div>
+        <h2 style="font-size:20px;font-weight:700;color:#1e293b;margin-bottom:6px">${d.borclu}</h2>
+        ${badge(d.durum)}
+      </div>
+      <button class="btn-close" onclick="document.getElementById('detay-modal').style.display='none'">✕</button>
+    </div>
+    <div class="detay-grid">${fields.map(([l, v]) => `<div class="detay-field"><div class="lbl">${l.toUpperCase()}</div><div class="val">${v}</div></div>`).join("")}</div>
+    ${hacizHtml}
+    ${d.notlar ? `<div class="detay-not"><div class="lbl">NOTLAR</div><div class="val">${d.notlar}</div></div>` : ""}
+    <div class="detay-actions">
+      <button class="btn-duzenle" onclick="openDuzenle('${d.id}')">✏️ Düzenle</button>
+      <button class="btn-sil2" onclick="openSil('${d.id}')">🗑️ Sil</button>
+    </div>`;
+  document.getElementById("detay-modal").style.display = "flex";
+}
+
+function openSil(id) {
+  silId = id;
+  document.getElementById("sil-modal").style.display = "flex";
+  document.getElementById("detay-modal").style.display = "none";
+}
+
+async function silOnayla() {
+  const { error } = await db.from("dosyalar").delete().eq("id", silId);
+  if (error) { toast("❌ Silinemedi!"); return; }
+  toast("🗑️ Dosya silindi!");
+  document.getElementById("sil-modal").style.display = "none";
+  silId = null;
+  await yukle();
+}
+
+// Başlat
+yukle();
+</script>
+</body>
+</html>
