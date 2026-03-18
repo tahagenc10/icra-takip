@@ -28,6 +28,7 @@
     .tab-baslangic.active { color: #e85d4a; }
     .tab-kesinlesmis.active { color: #6366f1; }
     .tab-batik.active { color: #94a3b8; }
+    .tab-kapali.active { color: #22c55e; }
     .hatirlatma-box { background: #fffbeb; border: 1.5px solid #fcd34d; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; }
     .hatirlatma-box strong { color: #92400e; font-size: 13px; }
     .hatirlatma-items { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -150,8 +151,8 @@
   <div class="tabs">
     <button class="tab tab-baslangic active" onclick="setTab('baslangic')">📂 Başlangıç <span id="cnt-baslangic"></span></button>
     <button class="tab tab-kesinlesmis" onclick="setTab('kesinlesmis')">🔒 Kesinleşmiş <span id="cnt-kesinlesmis"></span></button>
-    <button class="tab tab-batik" onclick="setTab('batik')">💀 Batık <span id="cnt-batik"></span></button>
-  </div>
+<button class="tab tab-batik" onclick="setTab('batik')">💀 Batık <span id="cnt-batik"></span></button>
+<button class="tab tab-kapali" onclick="setTab('kapali')">✅ Kapalı <span id="cnt-kapali"></span></button>  </div>
   <div id="liste"><div style="text-align:center;padding:40px;color:#94a3b8">⏳ Yükleniyor...</div></div>
 </div>
 <div class="overlay" id="form-modal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
@@ -196,6 +197,7 @@
             <div class="tik-toggle">
               <button type="button" class="tik-btn" id="tik-kesintalep" onclick="toggleKesin('talep')">Talep Edildi</button>
               <button type="button" class="tik-btn" id="tik-kesin" onclick="toggleKesin('kesin')">Kesinleşti</button>
+              <button type="button" class="tik-btn" id="tik-kapali" onclick="toggleKapali()">✅ Tamamlandı</button>
             </div>
           </div>
         </div>
@@ -312,14 +314,13 @@ async function yukle(){
 function setTab(tab){aktifTab=tab;document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));document.querySelector(".tab-"+tab).classList.add("active");render();}
 function render(){
   const metin=document.getElementById("arama").value.toLowerCase();
-  ["baslangic","kesinlesmis","batik"].forEach(b=>{const el=document.getElementById("cnt-"+b);if(el)el.textContent=`(${dosyalar.filter(d=>d.bolum===b).length})`;});
+  ["baslangic","kesinlesmis","batik","kapali"].forEach(b=>{const el=document.getElementById("cnt-"+b);if(el)el.textContent=`(${dosyalar.filter(d=>d.bolum===b).length})`;});
   const toplam=dosyalar.reduce((s,d)=>s+(parseFloat(d.borcMiktar)||0),0);
   const toplamTahsil=dosyalar.reduce((s,d)=>s+(d.tahsilatlar||[]).reduce((a,t)=>a+(parseFloat(t.tutar)||0),0),0);
   document.getElementById("header-stats").textContent=`${dosyalar.length} dosya · Toplam: ${formatCurrency(toplam)} · Tahsil: ${formatCurrency(toplamTahsil)}`;
   const hat=dosyalar.filter(d=>d.hatirlatmaTarihi&&d.hatirlatmaTarihi<=bugun()&&d.bolum!=="batik");
   document.getElementById("hatirlatmalar").innerHTML=hat.length>0?`<div class="hatirlatma-box"><strong>🔔 Bugün veya geçmiş hatırlatmalar:</strong><div class="hatirlatma-items">${hat.map(d=>`<span class="hatirlatma-item" onclick="openDetay('${d.id}')">${d.borclu} — ${formatDate(d.hatirlatmaTarihi)}</span>`).join("")}</div></div>`:"";
-  const filtered=dosyalar.filter(d=>{const eslesme=!metin||d.borclu?.toLowerCase().includes(metin)||d.dosyaNo?.toLowerCase().includes(metin);return eslesme&&d.bolum===aktifTab;});
-  const listeEl=document.getElementById("liste");
+const eslesme=!metin||d.borclu?.toLowerCase().includes(metin)||d.dosyaNo?.toLowerCase().includes(metin);return eslesme&&(metin?true:d.bolum===aktifTab);  const listeEl=document.getElementById("liste");
   if(filtered.length===0){listeEl.innerHTML=`<div class="empty-state"><div style="font-size:36px;margin-bottom:10px">📂</div><strong style="color:#64748b;display:block">Dosya bulunamadı</strong></div>`;return;}
   listeEl.innerHTML=`<div class="dosya-list">${filtered.map(d=>{
     const tags=(d.hacizSecili||[]).map(h=>`<span class="haciz-tag">🔒 ${h}</span>`).join("");
@@ -357,6 +358,7 @@ function toggleTik(tip){
   if(tip==="magdur"){tikMagdur=!tikMagdur;document.getElementById("tik-magdur").className="tik-btn"+(tikMagdur?" active-green":"");document.getElementById("magdur-detay").style.display=tikMagdur?"block":"none";}
 }
 function toggleKesin(tip){kesinDurum=kesinDurum===tip?"":tip;if(kesinDurum==="kesin")document.getElementById("f-bolum").value="kesinlesmis";document.getElementById("tik-kesintalep").className="tik-btn"+(kesinDurum==="talep"?" active-blue":"");document.getElementById("tik-kesin").className="tik-btn"+(kesinDurum==="kesin"?" active-purple":"");}
+  function toggleKapali(){document.getElementById("f-bolum").value="kapali";document.getElementById("tik-kapali").className="tik-btn active-green";toast("✅ Dosya kapalı dosyalara taşındı!");}
 function vekaletEkle(){const t=document.getElementById("vekalet-input").value;const a=document.getElementById("vekalet-aciklama").value;if(!t)return;vekaletler.push({tutar:parseFloat(t),aciklama:a});document.getElementById("vekalet-input").value="";document.getElementById("vekalet-aciklama").value="";renderVekaletList();}
 function vekaletSil(i){vekaletler.splice(i,1);renderVekaletList();}
 function renderVekaletList(){const top=vekaletler.reduce((s,v)=>s+(v.tutar||0),0);document.getElementById("vekalet-list").innerHTML=vekaletler.map((v,i)=>`<div class="vekalet-item"><span>${v.aciklama||"Vekalet ücreti"}</span><small>${formatCurrency(v.tutar)}</small><button type="button" class="btn-vekalet-sil" onclick="vekaletSil(${i})">✕</button></div>`).join("")+(vekaletler.length>0?`<div style="text-align:right;font-size:12px;color:#d4a017;font-weight:700;padding:4px 2px">Toplam: ${formatCurrency(top)}</div>`:"");}
@@ -373,8 +375,7 @@ function resetForm(){
   if(document.getElementById("f-magdurKesinti"))document.getElementById("f-magdurKesinti").value="";
   setSeciliHacizler([]);tikTeblig=false;tik212Talep=false;tikMagdur=false;kesinDurum="";vekaletler=[];tahsilatlar=[];
   document.getElementById("tik-teblig").className="tik-btn";document.getElementById("tik-212talep").className="tik-btn";document.getElementById("tik-magdur").className="tik-btn";
-  document.getElementById("tik-kesintalep").className="tik-btn";document.getElementById("tik-kesin").className="tik-btn";
-  document.getElementById("teblig-detay").style.display="none";document.getElementById("magdur-detay").style.display="none";
+document.getElementById("tik-kesin").className="tik-btn";document.getElementById("tik-kapali").className="tik-btn";  document.getElementById("teblig-detay").style.display="none";document.getElementById("magdur-detay").style.display="none";
   renderVekaletList();renderTahsilList();panelAcik=false;document.getElementById("haciz-panel").style.display="none";document.getElementById("haciz-arrow").style.transform="rotate(0deg)";
 }
 function openYeni(){editId=null;document.getElementById("form-title").textContent="Yeni İcra Dosyası";resetForm();document.getElementById("form-modal").style.display="flex";}
