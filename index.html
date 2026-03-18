@@ -312,7 +312,6 @@ async function yukle(){
   render();
 }
 function setTab(tab){aktifTab=tab;document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));document.querySelector(".tab-"+tab).classList.add("active");render();}
-function render(){
   function render(){
   const metin=document.getElementById("arama").value.toLowerCase();
   ["baslangic","kesinlesmis","batik","kapali"].forEach(b=>{const el=document.getElementById("cnt-"+b);if(el)el.textContent=`(${dosyalar.filter(d=>d.bolum===b).length})`;});
