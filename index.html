@@ -320,8 +320,8 @@ function render(){
   document.getElementById("header-stats").textContent=`${dosyalar.length} dosya · Toplam: ${formatCurrency(toplam)} · Tahsil: ${formatCurrency(toplamTahsil)}`;
   const hat=dosyalar.filter(d=>d.hatirlatmaTarihi&&d.hatirlatmaTarihi<=bugun()&&d.bolum!=="batik");
   document.getElementById("hatirlatmalar").innerHTML=hat.length>0?`<div class="hatirlatma-box"><strong>🔔 Bugün veya geçmiş hatırlatmalar:</strong><div class="hatirlatma-items">${hat.map(d=>`<span class="hatirlatma-item" onclick="openDetay('${d.id}')">${d.borclu} — ${formatDate(d.hatirlatmaTarihi)}</span>`).join("")}</div></div>`:"";
-return eslesme&&(metin?true:d.bolum===aktifTab);  if(filtered.length===0){listeEl.innerHTML=`<div class="empty-state"><div style="font-size:36px;margin-bottom:10px">📂</div><strong style="color:#64748b;display:block">Dosya bulunamadı</strong></div>`;return;}
-  listeEl.innerHTML=`<div class="dosya-list">${filtered.map(d=>{
+return eslesme&&(metin?true:d.bolum===aktifTab);
+  if(filtered.length===0){listeEl.innerHTML=`<div class="empty-state"><div style="font-size:36px;margin-bottom:10px">📂</div><strong style="color:#64748b;display:block">Dosya bulunamadı</strong></div>`;return;}listeEl.innerHTML=`<div class="dosya-list">${filtered.map(d=>{
     const tags=(d.hacizSecili||[]).map(h=>`<span class="haciz-tag">🔒 ${h}</span>`).join("");
     const toplamVekalet=(d.vekaletler||[]).reduce((s,v)=>s+(parseFloat(v.tutar)||0),0);
     const toplamTahsilat=(d.tahsilatlar||[]).reduce((s,t)=>s+(parseFloat(t.tutar)||0),0);
